@@ -7,9 +7,16 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report, accuracy_score
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+
+# XGBoost + LightGBM (optional)
+from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
+
 import seaborn as sns
 import matplotlib.pyplot as plt
 from tabulate import tabulate
@@ -66,7 +73,7 @@ print(f"Features removed due to high correlation (> {threshold}): {to_drop}")
 print(f"Selected numeric features for training: {selected_numeric_features}")
 print(f"Total numeric features reduced from {len(new_numeric_features)} → {len(selected_numeric_features)}")
 
-# Combine numeric + categorical
+#Combine numeric + categorical
 all_features = selected_numeric_features + new_categorical_features
 
 print(f"\nFinal feature count: {len(all_features)} (Numeric: {len(selected_numeric_features)}, Categorical: {len(new_categorical_features)})")
@@ -91,14 +98,24 @@ preprocessor = ColumnTransformer(
     ]
 )
 
-# Train multiple models
+# ----------------------------------------------------
+# 🔥 TRAIN MULTIPLE MODELS (EXPANDED LIST ADDED HERE)
+# ----------------------------------------------------
 print("\nTraining Multiple Models...")
+
 models = {
     "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=42),
     "Logistic Regression": LogisticRegression(max_iter=500),
-    "SVM": SVC(probability=True),
-    "Gradient Boosting": GradientBoostingClassifier()
+    "SVM (RBF)": SVC(kernel='rbf', probability=True),
+    "SVM (Linear)": SVC(kernel='linear', probability=True),
+    "Gradient Boosting": GradientBoostingClassifier(),
+    "Decision Tree": DecisionTreeClassifier(class_weight='balanced'),
+    "KNN": KNeighborsClassifier(),
+    "AdaBoost": AdaBoostClassifier(),
+    "XGBoost": XGBClassifier(eval_metric='logloss', use_label_encoder=False),
+    "LightGBM": LGBMClassifier()
 }
+# ----------------------------------------------------
 
 results = []
 for name, clf in models.items():
@@ -111,35 +128,11 @@ for name, clf in models.items():
 print("\n--- Model Comparison Results ---")
 print(tabulate(results, headers=["Model", "Validation Accuracy"], tablefmt="grid"))
 
-# # train Only Fast Models ---
-# print("\n training Fast Models Only")
-
-# models = {
-#     "Logistic Regression": LogisticRegression(max_iter=500),
-#     "Random Forest": RandomForestClassifier(class_weight='balanced', random_state=42)
-# }
-
-# results = []
-# for name, clf in models.items():
-#     pipe = Pipeline(steps=[
-#         ('preprocessor', preprocessor),
-#         ('classifier', clf)
-#     ])
-#     pipe.fit(X_train, y_train)
-#     y_pred = pipe.predict(X_val)
-#     acc = accuracy_score(y_val, y_pred)
-#     results.append([name, f"{acc:.4f}"])
-
-# # Display results
-# from tabulate import tabulate
-# print("\n--- Model Comparison Results (Fast Models) ---")
-# print(tabulate(results, headers=["Model", "Validation Accuracy"], tablefmt="grid"))
-
-
 # Choose best model ---
 best_model_name = max(results, key=lambda x: float(x[1]))[0]
 print(f"\nBest base model: {best_model_name}")
 
+# Hyperparameter grids for only the best 2 models for speed
 if best_model_name == "Random Forest":
     param_grid = {
         'classifier__n_estimators': [100, 200],
